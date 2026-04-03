@@ -153,7 +153,6 @@ class CRM_Lineitemedit_Form_Edit extends CRM_Core_Form {
 
   public function postProcess() {
     $values = $this->getSubmittedValues();
-    $balanceAmount = ($values['line_total'] - $this->_lineitemInfo['line_total']);
     $contactId = CRM_Core_DAO::getFieldValue('CRM_Contribute_BAO_Contribution',
       $this->_lineitemInfo['contribution_id'],
       'contact_id'
@@ -162,37 +161,56 @@ class CRM_Lineitemedit_Form_Edit extends CRM_Core_Form {
     if (!$this->isTaxEnabledInFinancialType($values['financial_type_id'])) {
       $values['tax_amount'] = 0.00;
     }
-    $params = array(
-      'id' => $this->_id,
-      'financial_type_id' => $values['financial_type_id'],
-      'label' => $values['label'],
-      'qty' => $values['qty'],
-      'unit_price' => Civi::format()->machineMoney($values['unit_price']),
-      'line_total' => $values['line_total'],
-      'tax_amount' => Civi::format()->machineMoney(($values['tax_amount'] ?? 0.00)),
-    );
 
-    $lineItem = CRM_Price_BAO_LineItem::create($params);
-    $lineItem = civicrm_api3('LineItem', 'getsingle', ['id' => $this->_id]);
+    // Fetch all line items for this contribution so the Order API receives the
+    // complete set and does not discard non-edited items.
+    $existingLineItems = civicrm_api3('LineItem', 'get', [
+      'contribution_id' => $this->_lineitemInfo['contribution_id'],
+      'options' => ['limit' => 0],
+    ])['values'];
 
-    // calculate balance, tax and paidamount later used to adjust transaction
-    $updatedAmount = CRM_Price_BAO_LineItem::getLineTotal($this->_lineitemInfo['contribution_id']);
-    $taxAmount = CRM_Lineitemedit_Util::getTaxAmountTotalFromContributionID($this->_lineitemInfo['contribution_id']);
-    // Record adjusted amount by updating contribution info and create necessary financial trxns
-    CRM_Lineitemedit_Util::recordAdjustedAmt(
-      $updatedAmount,
-      $this->_lineitemInfo['contribution_id'],
-      $taxAmount,
-      FALSE
-    );
+    $lineItems = [];
+    foreach ($existingLineItems as $item) {
+      if ((int) $item['id'] === (int) $this->_id) {
+        // Replace with the submitted edited values.
+        $lineItems[] = [
+          'line_item' => [
+            [
+              'id' => $this->_id,
+              'financial_type_id' => $values['financial_type_id'],
+              'label' => $values['label'],
+              'qty' => $values['qty'],
+              'unit_price' => Civi::format()->machineMoney($values['unit_price']),
+              'line_total' => $values['line_total'],
+              'tax_amount' => Civi::format()->machineMoney(($values['tax_amount'] ?? 0.00)),
+            ],
+          ],
+        ];
+      }
+      else {
+        // Keep all other line items unchanged.
+        $lineItems[] = ['line_item' => [$item]];
+      }
+    }
 
-    // Record financial item on edit of lineitem
-    CRM_Lineitemedit_Util::insertFinancialItemOnEdit(
-      $this->_id,
-      $this->_lineitemInfo
-    );
+    try {
+      civicrm_api3('Order', 'create', [
+        'id' => $this->_lineitemInfo['contribution_id'],
+        'line_items' => $lineItems,
+      ]);
+    }
+    catch (CiviCRM_API3_Exception $e) {
+      CRM_Core_Session::setStatus(ts('Failed to update order: %1', [1 => $e->getMessage()]), 'Error', 'error');
+      \Civi::log()->error('Order update failed in postProcess: ' . $e->getMessage());
+      throw $e;
+    }
+    catch (Exception $e) {
+      CRM_Core_Session::setStatus(ts('An unexpected error occurred while updating the order.'), 'Error', 'error');
+      \Civi::log()->error('Unexpected error during order update: ' . $e->getMessage());
+      throw $e;
+    }
 
-    if (in_array($this->_lineitemInfo['entity_table'], ['civicrm_membership', 'civicrm_participant']) && !empty($lineItem['entity_id'])) {
+    if (in_array($this->_lineitemInfo['entity_table'], ['civicrm_membership', 'civicrm_participant']) && !empty($this->_lineitemInfo['entity_id'])) {
       $this->updateEntityRecord($this->_lineitemInfo);
       $entityTab = ($this->_lineitemInfo['entity_table'] == 'civicrm_membership') ? 'member' : 'participant';
       $this->ajaxResponse['updateTabs']['#tab_' . $entityTab] = CRM_Contact_BAO_Contact::getCountComponent(str_replace('civicrm_', '', $this->_lineitemInfo['entity_table']), $contactId);
