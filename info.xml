@@ -5,24 +5,41 @@
   <description>This extension allows a backend user to add, edit and cancel line item(s) associated with a Contribution.</description>
   <license>AGPL-3.0</license>
   <maintainer>
-    <author>Monish Deb</author>
-    <email>everyone@jmaconsulting.biz</email>
+    <author>Monish Deb, Joe Murray, JMA Consulting</author>
+    <email>support@jmaconsulting.biz</email>
   </maintainer>
   <urls>
-    <url desc="Main Extension Page">https://github.com/JMAConsulting/biz.jmaconsulting.lineitemedit</url>
-    <url desc="Documentation">https://github.com/JMAConsulting/biz.jmaconsulting.lineitemedit/blob/master/README.md</url>
-    <url desc="Support">https://github.com/JMAConsulting/biz.jmaconsulting.lineitemedit/issues</url>
+    <url desc="Main Extension Page">https://lab.civicrm.org/extensions/lineitemedit</url>
+    <url desc="Documentation">https://lab.civicrm.org/extensions/lineitemedit/-/blob/master/README.md</url>
+    <url desc="Support">https://lab.civicrm.org/extensions/lineitemedit/-/issues</url>
     <url desc="Licensing">http://www.gnu.org/licenses/agpl-3.0.html</url>
   </urls>
-  <releaseDate>2018-03-06</releaseDate>
-  <version>1.2</version>
+  <releaseDate>2026-02-03</releaseDate>
+  <version>2.9</version>
   <develStage>stable</develStage>
   <compatibility>
-    <ver>4.7</ver>
+    <ver>6.10</ver>
   </compatibility>
   <comments>This extension allows a backend user to add, edit and cancel line item(s) associated with a Contribution.
   </comments>
+  <requires>
+    <ext>org.civicrm.afform</ext>
+    <ext>org.civicrm.search_kit</ext>
+  </requires>
   <civix>
     <namespace>CRM/Lineitemedit</namespace>
+    <format>23.02.1</format>
   </civix>
+  <mixins>
+    <mixin>menu-xml@1.0.0</mixin>
+    <mixin>smarty-v2@1.0.1</mixin>
+    <mixin>setting-php@1.0.0</mixin>
+    <mixin>mgd-php@1.0.0</mixin>
+    <mixin>ang-php@1.0.0</mixin>
+  </mixins>
+  <classloader>
+    <psr0 prefix="CRM_" path="."/>
+    <psr4 prefix="Civi\" path="Civi"/>
+  </classloader>
+  <upgrader>CRM_Lineitemedit_Upgrader</upgrader>
 </extension>

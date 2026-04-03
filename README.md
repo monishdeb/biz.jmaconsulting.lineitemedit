@@ -1,7 +1,6 @@
-# Line Item Edits
+# Line Item Editor
 
-## biz.jmaconsulting.lineitemedit
-This extension allows a staff user to add, edit and delete line items of a contribution.
+This extension allows a staff user to add, edit and cancel line items of a contribution.
 
 Installation
 ------------
@@ -17,17 +16,17 @@ Usage
 Each item in the contribution is now displayed with edit and cancel icons.
 ![image](https://user-images.githubusercontent.com/13468905/30987931-a62977d8-a466-11e7-91ee-8521ab13f368.png)
 
-If the contribution was created with a price set, and some of the fields options are not currently selected, then a button appears that allows you to add another line item. 
-
 Edit opens the line item in a dialogue with the editable fields.
-![image](https://user-images.githubusercontent.com/3735621/31880148-4aa437f4-b7fd-11e7-854b-48447c9d5b3f.png)
+![image](https://user-images.githubusercontent.com/13468905/30990046-d7e7da56-a46d-11e7-9cf6-3f6b309df41d.png)
 
-If the total of the line item amounts is increased to more than the contribution total amount, the contribution status is changed to **Pending payment** and a popup appears reminding the user to create a payment record.
+If the total contribution amount is increased, the contribution status is changed to **Pending payment** and a popup appears reminding the user to create a payment record.
 
-If the total of the line item amounts is decreased to less than the contribution amount, the contribution status changed to **Pending refund** and **Record refund** appears under More on the contribution record.
+If the total contribution amount in decreased, the contribution status changed to **Pending refund** and **Record refund** appears under More on the contribution record.
 
-On the Contribution tab of the Contact Summary Page, clicking on the arrow to the left of the contribution amount or the amount link displays the history of the contribution including those due to edits.
+Clicking on the arrow to the left of the contribution amount or the amount link displays the history of the contribution with edits.
 
 ![image](https://user-images.githubusercontent.com/13468905/30990046-d7e7da56-a46d-11e7-9cf6-3f6b309df41d.png)
 
 After the refund or additional payment is recorded, the contribution status is set to **Completed**
+
+The 'Cancel' button sets the Quantity and Total Price to 0 for that line item.  It does not delete the line item.

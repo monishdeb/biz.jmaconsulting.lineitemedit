@@ -18,8 +18,9 @@ use Civi\Test\TransactionalInterface;
  *
  * @group headless
  */
-class CRM_Lineitemedit_Form_BaseTest extends \PHPUnit_Framework_TestCase implements HeadlessInterface, HookInterface, TransactionalInterface {
+class CRM_Lineitemedit_Form_BaseTest extends \PHPUnit\Framework\TestCase implements HeadlessInterface, HookInterface, TransactionalInterface {
 
+  use \Civi\Test\Api3TestTrait;
   protected $_contactID;
   protected $_contributionID;
   protected $_contribution;
@@ -35,7 +36,7 @@ class CRM_Lineitemedit_Form_BaseTest extends \PHPUnit_Framework_TestCase impleme
       ->apply();
   }
 
-  public function setUp() {
+  public function setUp(): void {
     parent::setUp();
     $this->createContact();
     if ($this->_createContri) {
@@ -43,89 +44,8 @@ class CRM_Lineitemedit_Form_BaseTest extends \PHPUnit_Framework_TestCase impleme
     }
   }
 
-  public function tearDown() {
+  public function tearDown(): void {
     parent::tearDown();
-  }
-
-  /**
-   * wrap api functions.
-   * so we can ensure they succeed & throw exceptions without litterering the test with checks
-   *
-   * @param string $entity
-   * @param string $action
-   * @param array $params
-   * @param mixed $checkAgainst
-   *   Optional value to check result against, implemented for getvalue,.
-   *   getcount, getsingle. Note that for getvalue the type is checked rather than the value
-   *   for getsingle the array is compared against an array passed in - the id is not compared (for
-   *   better or worse )
-   *
-   * @return array|int
-   */
-  public function callAPISuccess($entity, $action, $params, $checkAgainst = NULL) {
-    $params = array_merge(array(
-        'debug' => 1,
-      ),
-      $params
-    );
-    switch (strtolower($action)) {
-      case 'getvalue':
-        return $this->callAPISuccessGetValue($entity, $params, $checkAgainst);
-
-      case 'getsingle':
-        return $this->callAPISuccessGetSingle($entity, $params, $checkAgainst);
-
-      case 'getcount':
-        return $this->callAPISuccessGetCount($entity, $params, $checkAgainst);
-    }
-    $result = civicrm_api3($entity, $action, $params);
-    return $result;
-  }
-
-  public function callAPISuccessGetValue($entity, $params, $type = NULL) {
-    $params += array(
-      'debug' => 1,
-    );
-    $result = civicrm_api3($entity, 'getvalue', $params);
-    if ($type) {
-      if ($type == 'integer') {
-        // api seems to return integers as strings
-        $this->assertTrue(is_numeric($result), "expected a numeric value but got " . print_r($result, 1));
-      }
-      else {
-        $this->assertType($type, $result, "returned result should have been of type $type but was ");
-      }
-    }
-    return $result;
-  }
-
-  public function callAPISuccessGetSingle($entity, $params, $checkAgainst = NULL) {
-    $params += array(
-      'debug' => 1,
-    );
-    $result = civicrm_api3($entity, 'getsingle', $params);
-    if (!is_array($result) || !empty($result['is_error']) || isset($result['values'])) {
-      throw new Exception('Invalid getsingle result' . print_r($result, TRUE));
-    }
-    if ($checkAgainst) {
-      // @todo - have gone with the fn that unsets id? should we check id?
-      $this->checkArrayEquals($result, $checkAgainst);
-    }
-    return $result;
-  }
-
-  public function callAPISuccessGetCount($entity, $params, $count = NULL) {
-    $params += array(
-      'debug' => 1,
-    );
-    $result = $this->civicrm_api3($entity, 'getcount', $params);
-    if (!is_int($result) || !empty($result['is_error']) || isset($result['values'])) {
-      throw new Exception('Invalid getcount result : ' . print_r($result, TRUE) . " type :" . gettype($result));
-    }
-    if (is_int($count)) {
-      $this->assertEquals($count, $result, "incorrect count returned from $entity getcount");
-    }
-    return $result;
   }
 
   /**
@@ -264,9 +184,10 @@ class CRM_Lineitemedit_Form_BaseTest extends \PHPUnit_Framework_TestCase impleme
   }
 
   public function checkArrayEqualsByAttributes($expectedEntries, $actualEntries) {
+    $this->assertEquals(count(array_keys($expectedEntries)), count(array_keys($actualEntries)));
     foreach ($expectedEntries as $key => $expectedEntry) {
       foreach ($expectedEntry as $attribute => $expectedValue) {
-        $this->assertEquals($actualEntries[$key][$attribute], $expectedValue, "mismatch found for $attribute attribute");
+        $this->assertEquals($expectedValue, $actualEntries[$key][$attribute], "mismatch found for $attribute attribute for key $key");
       }
     }
   }
@@ -297,7 +218,7 @@ class CRM_Lineitemedit_Form_BaseTest extends \PHPUnit_Framework_TestCase impleme
       'tax_rate' => 10,
       'is_active' => 1,
     );
-    $account = CRM_Financial_BAO_FinancialAccount::add($params);
+    $account = CRM_Financial_BAO_FinancialAccount::writeRecord($params);
     $entityParams = array(
       'entity_table' => 'civicrm_financial_type',
       'entity_id' => $financialTypeId,
@@ -327,28 +248,24 @@ class CRM_Lineitemedit_Form_BaseTest extends \PHPUnit_Framework_TestCase impleme
        'invoicing' => 1,
        'invoice_prefix' => 'INV_',
        'credit_notes_prefix' => 'CN_',
-       'due_date' => 10,
-       'due_date_period' => 'days',
-       'notes' => '',
+       'invoice_due_date' => 10,
+       'invoice_due_date_period' => 'days',
+       'invoice_notes' => '',
        'is_email_pdf' => 1,
        'tax_term' => 'Sales Tax',
        'tax_display_settings' => 'Inclusive',
      )
     );
-    return Civi::settings()->set('contribution_invoice_settings', $contributeSetting);
+    foreach ($contributeSetting as $key => $value) {
+      Civi::settings()->set($key, $value);
+    }
   }
 
   /**
    * Enable Tax and Invoicing
    */
   protected function disableTaxAndInvoicing($params = array()) {
-    // Enable component contribute setting
-    $contributeSetting = array_merge($params,
-     array(
-       'invoicing' => 0,
-     )
-    );
-    return Civi::settings()->set('contribution_invoice_settings', $contributeSetting);
+    return Civi::settings()->set('invoicing', 0);
   }
 
   /**
@@ -393,8 +310,8 @@ class CRM_Lineitemedit_Form_BaseTest extends \PHPUnit_Framework_TestCase impleme
     $this->createPriceSet($priceFieldParams, $priceSetParams);
     CRM_Price_BAO_PriceSet::addTo('civicrm_event', $event['id'], $this->_priceSetID);
     $priceSet = CRM_Price_BAO_PriceSet::getSetDetail($this->_priceSetID, TRUE, FALSE);
-    $priceSet = CRM_Utils_Array::value($this->_priceSetID, $priceSet);
-    $this->_eventFeeBlock = CRM_Utils_Array::value('fields', $priceSet);
+    $priceSet = $priceSet[$this->_priceSetID] ?? NULL;
+    $this->_eventFeeBlock = $priceSet['fields'] ?? NULL;
 
     return $event;
   }
@@ -407,12 +324,61 @@ class CRM_Lineitemedit_Form_BaseTest extends \PHPUnit_Framework_TestCase impleme
    * @param string $class
    *   Name of form class.
    *
+   * @param array $formValues
+   *
+   * @param string $pageName
+   *
+   * @param array $searchFormValues
+   *   Values for the search form if the form is a task eg.
+   *   for selected ids 6 & 8:
+   *   [
+   *      'radio_ts' => 'ts_sel',
+   *      'task' => CRM_Member_Task::PDF_LETTER,
+   *      'mark_x_6' => 1,
+   *      'mark_x_8' => 1,
+   *   ]
+   *
    * @return \CRM_Core_Form
    */
-  public function getFormObject($class) {
+  public function getFormObject($class, $formValues = [], $pageName = '', $searchFormValues = []) {
+    $_POST = $formValues;
+    /* @var CRM_Core_Form $form */
     $form = new $class();
     $_SERVER['REQUEST_METHOD'] = 'GET';
-    $form->controller = new CRM_Core_Controller();
+    switch ($class) {
+      case 'CRM_Event_Cart_Form_Checkout_Payment':
+      case 'CRM_Event_Cart_Form_Checkout_ParticipantsAndPrices':
+        $form->controller = new CRM_Event_Cart_Controller_Checkout();
+        break;
+
+      default:
+        $form->controller = new CRM_Core_Controller();
+    }
+    if (!$pageName) {
+      $pageName = $form->getName();
+    }
+    $form->controller->setStateMachine(new CRM_Core_StateMachine($form->controller));
+    $_SESSION['_' . $form->controller->_name . '_container']['values'][$pageName] = $formValues;
+    if ($searchFormValues) {
+      $_SESSION['_' . $form->controller->_name . '_container']['values']['Search'] = $searchFormValues;
+    }
+    if (isset($formValues['_qf_button_name'])) {
+      $_SESSION['_' . $form->controller->_name . '_container']['_qf_button_name'] = $formValues['_qf_button_name'];
+    }
+    return $form;
+  }
+
+  /**
+   * Get the contribution form object.
+   *
+   * @param array $formValues
+   *
+   * @return \CRM_Contribute_Form_Contribution
+   */
+  protected function getContributionForm(array $formValues): CRM_Contribute_Form_Contribution {
+    /* @var CRM_Contribute_Form_Contribution $form */
+    $form = $this->getFormObject('CRM_Contribute_Form_Contribution', $formValues);
+    $form->buildForm();
     return $form;
   }
 

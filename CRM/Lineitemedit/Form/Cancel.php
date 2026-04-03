@@ -1,6 +1,6 @@
 <?php
 
-require_once 'CRM/Core/Form.php';
+use CRM_Lineitemedit_ExtensionUtil as E;
 
 /**
  * Form controller class
@@ -14,6 +14,8 @@ class CRM_Lineitemedit_Form_Cancel extends CRM_Core_Form {
   protected $_multipleLineItem;
 
   public $_prevContributionID = NULL;
+
+  public $_id;
 
   public function preProcess() {
     $this->_id = CRM_Utils_Request::retrieve('id', 'Positive', $this);
@@ -37,12 +39,12 @@ class CRM_Lineitemedit_Form_Cancel extends CRM_Core_Form {
   }
 
   public function buildQuickForm() {
-    $this->assign('message', ts('WARNING: Cancelling this line item will affect the related contribution and update the associated financial transactions. Do you want to continue?'));
+    $this->assign('message', E::ts('WARNING: Cancelling this line item will affect the related contribution and update the associated financial transactions. The quantity and total price will be set to 0 for this line item. Do you want to continue?'));
 
     $this->addButtons(array(
       array(
         'type' => 'submit',
-        'name' => ts('Cancel Item'),
+        'name' => E::ts('Cancel Item'),
         'isDefault' => TRUE,
       ),
       array(
@@ -55,19 +57,6 @@ class CRM_Lineitemedit_Form_Cancel extends CRM_Core_Form {
   }
 
   public function postProcess() {
-    $this->submit();
-    if ($this->_lineitemInfo['entity_table'] == 'civicrm_membership') {
-      $contactId = CRM_Core_DAO::getFieldValue('CRM_Contribute_BAO_Contribution',
-        $this->_lineitemInfo['contribution_id'],
-        'contact_id'
-      );
-      $this->ajaxResponse['updateTabs']['#tab_member'] = CRM_Contact_BAO_Contact::getCountComponent('membership', $contactId);
-    }
-
-    parent::postProcess();
-  }
-
-  public function submit() {
     CRM_Lineitemedit_Util::cancelEntity($this->_lineitemInfo['entity_id'], $this->_lineitemInfo['entity_table']);
 
     // change total_price and qty of current line item to 0, on cancel
@@ -96,12 +85,15 @@ class CRM_Lineitemedit_Form_Cancel extends CRM_Core_Form {
       $this->_id,
       $this->_lineitemInfo
     );
-  }
+    if ($this->_lineitemInfo['entity_table'] == 'civicrm_membership') {
+      $contactId = CRM_Core_DAO::getFieldValue('CRM_Contribute_BAO_Contribution',
+        $this->_lineitemInfo['contribution_id'],
+        'contact_id'
+      );
+      $this->ajaxResponse['updateTabs']['#tab_member'] = CRM_Contact_BAO_Contact::getCountComponent('membership', $contactId);
+    }
 
-  public function testSubmit($id) {
-    $this->_id = $id;
-    $this->assignFormVariables();
-    $this->submit();
+    parent::postProcess();
   }
 
 }
