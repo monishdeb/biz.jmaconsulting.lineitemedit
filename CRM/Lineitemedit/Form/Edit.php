@@ -163,9 +163,9 @@ class CRM_Lineitemedit_Form_Edit extends CRM_Core_Form {
     }
 
     try {
-      \Civi\Api4\Order::create(FALSE)
-        ->addValue('id', $this->_lineitemInfo['contribution_id'])
-        ->addValue('line_items', [
+      civicrm_api3('Order', 'create', [
+        'id' => $this->_lineitemInfo['contribution_id'],
+        'line_items' => [
           [
             'line_item' => [
               [
@@ -179,12 +179,17 @@ class CRM_Lineitemedit_Form_Edit extends CRM_Core_Form {
               ],
             ],
           ],
-        ])
-        ->execute();
+        ],
+      ]);
+    }
+    catch (CiviCRM_API3_Exception $e) {
+      CRM_Core_Session::setStatus(ts('Failed to update order: %1', [1 => $e->getMessage()]), 'Error', 'error');
+      \Civi::log()->error('Order update failed in postProcess: ' . $e->getMessage());
+      throw $e;
     }
     catch (Exception $e) {
-      CRM_Core_Session::setStatus(ts('Failed to update order: %1', [1 => $e->getMessage()]), 'Error', 'error');
-      \Civi::log()->error('Order update failed: ' . $e->getMessage());
+      CRM_Core_Session::setStatus(ts('An unexpected error occurred while updating the order.'), 'Error', 'error');
+      \Civi::log()->error('Unexpected error during order update: ' . $e->getMessage());
       throw $e;
     }
 
