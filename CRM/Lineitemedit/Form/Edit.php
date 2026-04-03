@@ -162,24 +162,38 @@ class CRM_Lineitemedit_Form_Edit extends CRM_Core_Form {
       $values['tax_amount'] = 0.00;
     }
 
-    civicrm_api3('Order', 'create', [
-      'id' => $this->_lineitemInfo['contribution_id'],
-      'line_items' => [
-        [
-          'line_item' => [
-            [
-              'id' => $this->_id,
-              'financial_type_id' => $values['financial_type_id'],
-              'label' => $values['label'],
-              'qty' => $values['qty'],
-              'unit_price' => Civi::format()->machineMoney($values['unit_price']),
-              'line_total' => $values['line_total'],
-              'tax_amount' => Civi::format()->machineMoney(($values['tax_amount'] ?? 0.00)),
+    try {
+      \Civi\Api4\Order::update(FALSE)
+        ->addWhere('id', '=', $this->_lineitemInfo['contribution_id'])
+        ->addValue('line_items', [
+          [
+            'line_item' => [
+              [
+                'id' => $this->_id,
+                'financial_type_id' => $values['financial_type_id'],
+                'label' => $values['label'],
+                'qty' => $values['qty'],
+                'unit_price' => Civi::format()->machineMoney($values['unit_price']),
+                'line_total' => $values['line_total'],
+                'tax_amount' => Civi::format()->machineMoney(($values['tax_amount'] ?? 0.00)),
+              ],
             ],
           ],
-        ],
-      ],
-    ]);
+        ])
+        ->execute();
+    }
+    catch (\CRM_Core_Exception $e) {
+      Civi::log()->error('Line item edit failed for contribution {contribution_id}: {message}', [
+        'contribution_id' => $this->_lineitemInfo['contribution_id'],
+        'message' => $e->getMessage(),
+      ]);
+      CRM_Core_Session::setStatus(
+        ts('An error occurred while updating the line item. Please try again or contact your administrator.'),
+        ts('Update Failed'),
+        'error'
+      );
+      return;
+    }
 
     if (in_array($this->_lineitemInfo['entity_table'], ['civicrm_membership', 'civicrm_participant']) && !empty($this->_lineitemInfo['entity_id'])) {
       $this->updateEntityRecord($this->_lineitemInfo);
