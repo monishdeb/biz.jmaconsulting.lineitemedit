@@ -163,8 +163,8 @@ class CRM_Lineitemedit_Form_Edit extends CRM_Core_Form {
     }
 
     try {
-      \Civi\Api4\Order::update(FALSE)
-        ->addWhere('id', '=', $this->_lineitemInfo['contribution_id'])
+      \Civi\Api4\Order::create(FALSE)
+        ->addValue('id', $this->_lineitemInfo['contribution_id'])
         ->addValue('line_items', [
           [
             'line_item' => [
@@ -182,17 +182,10 @@ class CRM_Lineitemedit_Form_Edit extends CRM_Core_Form {
         ])
         ->execute();
     }
-    catch (\CRM_Core_Exception $e) {
-      Civi::log()->error('Line item edit failed for contribution {contribution_id}: {message}', [
-        'contribution_id' => $this->_lineitemInfo['contribution_id'],
-        'message' => $e->getMessage(),
-      ]);
-      CRM_Core_Session::setStatus(
-        ts('An error occurred while updating the line item. Please try again or contact your administrator.'),
-        ts('Update Failed'),
-        'error'
-      );
-      return;
+    catch (Exception $e) {
+      CRM_Core_Session::setStatus(ts('Failed to update order: %1', [1 => $e->getMessage()]), 'Error', 'error');
+      \Civi::log()->error('Order update failed: ' . $e->getMessage());
+      throw $e;
     }
 
     if (in_array($this->_lineitemInfo['entity_table'], ['civicrm_membership', 'civicrm_participant']) && !empty($this->_lineitemInfo['entity_id'])) {
