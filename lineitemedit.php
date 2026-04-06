@@ -73,6 +73,16 @@ function lineitemedit_civicrm_buildForm($formName, &$form) {
     $contributionID = NULL;
     if (!empty($form->_id) && ($form->_action & CRM_Core_Action::UPDATE) && CRM_Core_Permission::check('edit line item')) {
       $contributionID = $form->_id;
+
+      // Check if the form is being refreshed after a line-item edit and disable the save button
+      $cacheKey = CRM_Lineitemedit_Form_Edit::CONTRIBUTION_REFRESH_FLAG_PREFIX . $contributionID;
+      if (Civi::cache('lineitemEditor')->get($cacheKey)) {
+        if ($form->elementExists('_qf_Contribution_upload')) {
+          $form->getElement('_qf_Contribution_upload')->setAttribute('disabled', 'disabled');
+        }
+        Civi::cache('lineitemEditor')->delete($cacheKey);
+      }
+
       $pricesetFieldsCount = NULL;
       $isQuickConfig = empty($form->_lineItems) ? TRUE : FALSE;
       // Append line-item table only if current contribution has quick config lineitem

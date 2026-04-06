@@ -12,6 +12,12 @@ require_once 'CRM/Core/Form.php';
 class CRM_Lineitemedit_Form_Edit extends CRM_Core_Form {
 
   /**
+   * Cache key prefix used to flag that a line-item edit was completed and the
+   * contribution form should display with the save button disabled.
+   */
+  const CONTRIBUTION_REFRESH_FLAG_PREFIX = 'lineitem_edit_flag_';
+
+  /**
    * The line-item values of an existing contribution
    */
 
@@ -191,6 +197,10 @@ class CRM_Lineitemedit_Form_Edit extends CRM_Core_Form {
       $this->_id,
       $this->_lineitemInfo
     );
+
+    // Set a cache flag so the contribution form can detect that a line-item was just edited
+    $refreshFlagCacheKey = CRM_Lineitemedit_Form_Edit::CONTRIBUTION_REFRESH_FLAG_PREFIX . $this->_lineitemInfo['contribution_id'];
+    Civi::cache('lineitemEditor')->set($refreshFlagCacheKey, TRUE);
 
     if (in_array($this->_lineitemInfo['entity_table'], ['civicrm_membership', 'civicrm_participant']) && !empty($lineItem['entity_id'])) {
       $this->updateEntityRecord($this->_lineitemInfo);
